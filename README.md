@@ -1,6 +1,6 @@
 # Okta-info
 
-## What
+## What?
 
 Query Okta API for
 
