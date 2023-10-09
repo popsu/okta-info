@@ -11,7 +11,7 @@ Query Okta API for
 
 ```shell
 # requires go to be installed (sorry no binaries yet)
-go install github.com/popsu/okta-info@latest
+go install github.com/popsu/okta-info@v0.0.1
 ```
 
 ## Usage
