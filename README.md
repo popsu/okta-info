@@ -14,7 +14,7 @@ Query Okta API for
 go install github.com/popsu/okta-info@latest
 ```
 
-Or download binary from the release page.
+Or download binary from the [releases page](https://github.com/popsu/okta-info/releases)
 
 ## Usage
 
