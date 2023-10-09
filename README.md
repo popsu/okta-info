@@ -10,9 +10,11 @@ Query Okta API for
 ## Installation
 
 ```shell
-# requires go to be installed (sorry no binaries yet)
-go install github.com/popsu/okta-info@v0.0.1
+# requires go to be installed
+go install github.com/popsu/okta-info@latest
 ```
+
+Or download binary from the release page.
 
 ## Usage
 
