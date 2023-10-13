@@ -92,12 +92,12 @@ func (oi *OIClient) PrintGroupsForUser(wantUserName string) error {
 	return nil
 }
 
-func (oi *OIClient) PrintUsersInGroup(wantGroupName string) error {
+func (oi *OIClient) GetUsersInGroup(wantGroupName string) ([]string, error) {
 	filter := query.NewQueryParams(query.WithQ(wantGroupName))
 	groups, _, err := oi.c.Group.ListGroups(oi.ctx, filter)
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	var groupID string
@@ -110,13 +110,13 @@ func (oi *OIClient) PrintUsersInGroup(wantGroupName string) error {
 
 	if groupID == "" {
 		fmt.Println("Group not found")
-		return nil
+		return nil, nil
 	}
 
 	users, _, err := oi.c.Group.ListGroupUsers(oi.ctx, groupID, query.NewQueryParams())
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	foundUsers := make([]string, 0, len(users))
@@ -132,6 +132,15 @@ func (oi *OIClient) PrintUsersInGroup(wantGroupName string) error {
 	}
 
 	sort.Strings(foundUsers)
+
+	return foundUsers, nil
+}
+
+func (oi *OIClient) PrintUsersInGroup(wantGroupName string) error {
+	foundUsers, err := oi.GetUsersInGroup(wantGroupName)
+	if err != nil {
+		return err
+	}
 
 	for _, user := range foundUsers {
 		fmt.Println(user)
