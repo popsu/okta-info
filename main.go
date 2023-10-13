@@ -26,12 +26,18 @@ func run() error {
 		os.Exit(1)
 	}
 
+	oic, err := NewOIClient()
+
+	if err != nil {
+		return err
+	}
+
 	// Handle the subcommands
 	switch os.Args[1] {
 	case "group":
-		return printUsersInGroup(os.Args[2])
+		return oic.PrintUsersInGroup(os.Args[2])
 	case "user":
-		return printGroupsForUser(os.Args[2])
+		return oic.PrintGroupsForUser(os.Args[2])
 	default:
 		fmt.Println("Invalid subcommand. Valid commands are: group and user")
 		os.Exit(1)
@@ -80,10 +86,16 @@ func getAPIToken() (string, error) {
 	return strings.TrimSpace(outb.String()), nil
 }
 
-func getOktaClient() (context.Context, *okta.Client, error) {
+type OIClient struct {
+	c *okta.Client
+	// Not sure if this is needed, the okta.NewClient returns context also, so storing it here for now
+	ctx context.Context
+}
+
+func NewOIClient() (*OIClient, error) {
 	apiToken, err := getAPIToken()
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	ctx, client, err := okta.NewClient(
@@ -96,28 +108,25 @@ func getOktaClient() (context.Context, *okta.Client, error) {
 		// Okta URL missing
 		if strings.Contains(err.Error(), "Okta URL is missing.") {
 			fmt.Println("Okta org url missing. Please set OKTA_INFO_ORG_URL environment variable to your okta org url, It should look like https://<org>.okta.com")
-			return nil, nil, err
+			return nil, err
 		}
 		// API token missing
 		if strings.Contains(err.Error(), "your Okta API token is missing") {
 			fmt.Println("Okta API token missing or invalid. Please set OKTA_INFO_API_TOKEN environment variable to your okta API token")
 		}
 
-		return nil, nil, err
+		return nil, err
 	}
 
-	return ctx, client, nil
+	return &OIClient{
+		c:   client,
+		ctx: ctx,
+	}, nil
 }
 
-func printGroupsForUser(wantUserName string) error {
-	ctx, client, err := getOktaClient()
-
-	if err != nil {
-		return err
-	}
-
+func (oi *OIClient) PrintGroupsForUser(wantUserName string) error {
 	filter := query.NewQueryParams(query.WithQ(wantUserName))
-	users, _, err := client.User.ListUsers(ctx, filter)
+	users, _, err := oi.c.User.ListUsers(oi.ctx, filter)
 
 	if err != nil {
 		return err
@@ -141,7 +150,7 @@ func printGroupsForUser(wantUserName string) error {
 		return nil
 	}
 
-	groups, _, err := client.User.ListUserGroups(ctx, userID)
+	groups, _, err := oi.c.User.ListUserGroups(oi.ctx, userID)
 
 	if err != nil {
 		return err
@@ -164,15 +173,9 @@ func printGroupsForUser(wantUserName string) error {
 	return nil
 }
 
-func printUsersInGroup(wantGroupName string) error {
-	ctx, client, err := getOktaClient()
-
-	if err != nil {
-		return err
-	}
-
+func (oi *OIClient) PrintUsersInGroup(wantGroupName string) error {
 	filter := query.NewQueryParams(query.WithQ(wantGroupName))
-	groups, _, err := client.Group.ListGroups(ctx, filter)
+	groups, _, err := oi.c.Group.ListGroups(oi.ctx, filter)
 
 	if err != nil {
 		return err
@@ -191,7 +194,7 @@ func printUsersInGroup(wantGroupName string) error {
 		return nil
 	}
 
-	users, _, err := client.Group.ListGroupUsers(ctx, groupID, query.NewQueryParams())
+	users, _, err := oi.c.Group.ListGroupUsers(oi.ctx, groupID, query.NewQueryParams())
 
 	if err != nil {
 		return err
