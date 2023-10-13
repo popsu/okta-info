@@ -6,6 +6,7 @@ Query Okta API for
 
 1) Groups the given user is in
 2) All users in the given group
+3) Difference of 2 groups
 
 ## Installation
 
@@ -36,4 +37,10 @@ OKTA_INFO_API_TOKEN=<your-api-token>
 
     ```shell
     okta-info group <group-name>
+    ```
+
+3. Query difference of two groups:
+
+    ```shell
+    okta-info diff <group-name-1> <group-name-2>
     ```
