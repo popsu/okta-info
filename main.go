@@ -39,8 +39,10 @@ func run() error {
 		return oic.PrintUsersInGroup(os.Args[2])
 	case "user":
 		return oic.PrintGroupsForUser(os.Args[2])
+	case "diff":
+		return oic.PrintGroupDiff(os.Args[2], os.Args[3])
 	default:
-		fmt.Println("Invalid subcommand. Valid commands are: group and user")
+		fmt.Println("Invalid subcommand. Valid commands are: group, diff and user")
 		os.Exit(1)
 	}
 	// should not get here ever

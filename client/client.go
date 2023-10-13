@@ -8,6 +8,7 @@ import (
 
 	"github.com/okta/okta-sdk-golang/v2/okta"
 	"github.com/okta/okta-sdk-golang/v2/okta/query"
+	"github.com/samber/lo"
 )
 
 type OIClient struct {
@@ -143,6 +144,33 @@ func (oi *OIClient) PrintUsersInGroup(wantGroupName string) error {
 	}
 
 	for _, user := range foundUsers {
+		fmt.Println(user)
+	}
+
+	return nil
+}
+
+// PrintGroupDiff prints the difference of 2 groups
+func (oi *OIClient) PrintGroupDiff(groupA, groupB string) error {
+	groupAUsers, err := oi.GetUsersInGroup(groupA)
+	if err != nil {
+		return err
+	}
+	groupBUsers, err := oi.GetUsersInGroup(groupB)
+	if err != nil {
+		return err
+	}
+
+	notInB, notInA := lo.Difference(groupAUsers, groupBUsers)
+
+	fmt.Printf("Users in %s, but not in %s:\n", groupA, groupB)
+	for _, user := range notInB {
+		fmt.Println(user)
+	}
+	fmt.Println()
+
+	fmt.Printf("Users in %s, but not in %s:\n", groupB, groupA)
+	for _, user := range notInA {
 		fmt.Println(user)
 	}
 
