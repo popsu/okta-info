@@ -36,11 +36,20 @@ func run() error {
 	// Handle the subcommands
 	switch os.Args[1] {
 	case "group":
-		return oic.PrintUsersInGroup(os.Args[2])
+		// CommaSeparated list of groups
+		groups := strings.Split(os.Args[2], ",")
+
+		return oic.PrintUsersInGroups(groups)
 	case "user":
 		return oic.PrintGroupsForUser(os.Args[2])
 	case "diff":
-		return oic.PrintGroupDiff(os.Args[2], os.Args[3])
+		// CommaSeparated list of groups
+		groupsA := strings.Split(os.Args[2], ",")
+		groupsB := strings.Split(os.Args[3], ",")
+
+		hideDeprovisioned := false
+
+		return oic.PrintGroupDiff(groupsA, groupsB, hideDeprovisioned)
 	default:
 		fmt.Println("Invalid subcommand. Valid commands are: group, diff and user")
 		os.Exit(1)

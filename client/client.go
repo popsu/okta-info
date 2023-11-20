@@ -137,8 +137,8 @@ func (oi *OIClient) GetUsersInGroup(wantGroupName string) ([]string, error) {
 	return foundUsers, nil
 }
 
-func (oi *OIClient) PrintUsersInGroup(wantGroupName string) error {
-	foundUsers, err := oi.GetUsersInGroup(wantGroupName)
+func (oi *OIClient) PrintUsersInGroups(wantGroupsName []string) error {
+	foundUsers, err := oi.getUsersInGroupsUnion(wantGroupsName)
 	if err != nil {
 		return err
 	}
@@ -150,29 +150,67 @@ func (oi *OIClient) PrintUsersInGroup(wantGroupName string) error {
 	return nil
 }
 
-// PrintGroupDiff prints the difference of 2 groups
-func (oi *OIClient) PrintGroupDiff(groupA, groupB string) error {
-	groupAUsers, err := oi.GetUsersInGroup(groupA)
-	if err != nil {
-		return err
-	}
-	groupBUsers, err := oi.GetUsersInGroup(groupB)
+// PrintGroupDiff prints the difference of two sets of groups
+func (oi *OIClient) PrintGroupDiff(groupsA, groupsB []string, hideDeprovisioned bool) error {
+	groupsAUsers, err := oi.getUsersInGroupsUnion(groupsA)
 	if err != nil {
 		return err
 	}
 
-	notInB, notInA := lo.Difference(groupAUsers, groupBUsers)
+	groupBUsers, err := oi.getUsersInGroupsUnion(groupsB)
+	if err != nil {
+		return err
+	}
 
-	fmt.Printf("Users in %s, but not in %s:\n", groupA, groupB)
+	notInB, notInA := lo.Difference(groupsAUsers, groupBUsers)
+
+	groupA := strings.Join(groupsA, ", ")
+	groupB := strings.Join(groupsB, ", ")
+
+	headerStringFmt := "Users in %s, but not in %s:\n"
+	if hideDeprovisioned {
+		headerStringFmt = "Users (excluding deprovisioned) in %s, but not in %s:\n"
+	}
+
+	fmt.Printf(headerStringFmt, groupA, groupB)
 	for _, user := range notInB {
+		if strings.Contains(user, "(DEPROVISIONED)") && hideDeprovisioned {
+			continue
+		}
+
 		fmt.Println(user)
 	}
 	fmt.Println()
 
-	fmt.Printf("Users in %s, but not in %s:\n", groupB, groupA)
+	fmt.Printf(headerStringFmt, groupB, groupA)
 	for _, user := range notInA {
+		if strings.Contains(user, "(DEPROVISIONED)") && hideDeprovisioned {
+			continue
+		}
+
 		fmt.Println(user)
 	}
 
 	return nil
+}
+
+// getUsersInGroupsUnion returns a deduplicated slice of users who are in at least one of the given groups
+func (oi *OIClient) getUsersInGroupsUnion(groups []string) ([]string, error) {
+	users := make([]string, 0)
+
+	for _, group := range groups {
+		groupUsers, err := oi.GetUsersInGroup(group)
+		if err != nil {
+			return nil, err
+		}
+		users = append(users, groupUsers...)
+	}
+
+	// dedup
+	users = lo.Uniq(users)
+
+	// sort
+	sort.Strings(users)
+
+	return users, nil
 }
