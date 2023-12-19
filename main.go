@@ -56,7 +56,7 @@ func run() error {
 		groupsA := strings.Split(os.Args[2], ",")
 		groupsB := strings.Split(os.Args[3], ",")
 
-		hideDeprovisioned := true
+		hideDeprovisioned := false
 
 		return oic.PrintGroupDiff(groupsA, groupsB, hideDeprovisioned)
 	case "rule":
