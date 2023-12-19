@@ -57,14 +57,20 @@ func (oi *OIClient) PrintGroupRules(searchGroup string) error {
 		rules[i] = rule
 	}
 
-	return printGroupRules(searchGroup, rules)
+	groupRulesString := filterRulesToFormatted(searchGroup, rules)
+	fmt.Println(groupRulesString)
+
+	return nil
 }
 
-func printGroupRules(searchGroup string, ogr []OktaGroupRule) error {
-	var ogr2 []OktaGroupRule
+// filterRulesToFormatted filters the rules to only include the ones that have searchGroup as either source or destination
+// and formats them in a string that is ready to be printed to terminal
+func filterRulesToFormatted(searchGroup string, ogr []OktaGroupRule) string {
+	var filteredOgr []OktaGroupRule
 
 	sourceMaxLength := 0
 
+	// Only pick the rules that have searchGroup as either source or destination
 	for _, o := range ogr {
 		// is this shouldAdd stuff even needed?
 		shoulAdd := true
@@ -75,8 +81,8 @@ func printGroupRules(searchGroup string, ogr []OktaGroupRule) error {
 
 		var wantedSourceGroupValue string
 		for _, sourceGroupID := range o.SourceGroupIDs {
-			sourceMaxLength = max(sourceMaxLength, len(sourceGroupID))
 			if strings.EqualFold(sourceGroupID, searchGroup) {
+				sourceMaxLength = max(sourceMaxLength, len(sourceGroupID))
 				shoulAdd = true
 				// we need separate value to make sure Capitalization is proper
 				wantedSourceGroupValue = sourceGroupID
@@ -88,8 +94,11 @@ func printGroupRules(searchGroup string, ogr []OktaGroupRule) error {
 		}
 		// Only add the dependency to/from wantedValue, ignore other rules
 		if strings.EqualFold(o.DestinationGroupID, searchGroup) {
+			for _, sourceGroupID := range o.SourceGroupIDs {
+				sourceMaxLength = max(sourceMaxLength, len(sourceGroupID))
+			}
 			// add all
-			ogr2 = append(ogr2, o)
+			filteredOgr = append(filteredOgr, o)
 		}
 		// wantedValue is one of the sourceGroups, drop the other sourceGroups
 		if strings.EqualFold(wantedSourceGroupValue, searchGroup) {
@@ -97,25 +106,27 @@ func printGroupRules(searchGroup string, ogr []OktaGroupRule) error {
 				DestinationGroupID: o.DestinationGroupID,
 				SourceGroupIDs:     []string{wantedSourceGroupValue},
 			}
-			ogr2 = append(ogr2, ogrNew)
+			filteredOgr = append(filteredOgr, ogrNew)
 		}
 	}
-
-	ogr = ogr2
 
 	// separate slice for printing so we can get output alphabetically sorted
 	var printSlice []string
 
-	for _, o := range ogr {
+	for _, o := range filteredOgr {
 		for _, sourceGroupID := range o.SourceGroupIDs {
 			printSlice = append(printSlice, fmt.Sprintf("%-*s -> %s", sourceMaxLength, sourceGroupID, o.DestinationGroupID))
 		}
 	}
 
 	slices.Sort(printSlice)
+
+	var sb strings.Builder
+
 	for _, s := range printSlice {
-		fmt.Println(s)
+		sb.WriteString(s)
+		sb.WriteString("\n")
 	}
 
-	return nil
+	return sb.String()
 }
