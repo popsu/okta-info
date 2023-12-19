@@ -58,7 +58,7 @@ func (oi *OIClient) PrintGroupRules(searchGroup string) error {
 	}
 
 	groupRulesString := filterRulesToFormatted(searchGroup, rules)
-	fmt.Println(groupRulesString)
+	fmt.Print(groupRulesString)
 
 	return nil
 }
