@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -213,4 +214,138 @@ func (oi *OIClient) getUsersInGroupsUnion(groups []string) ([]string, error) {
 	sort.Strings(users)
 
 	return users, nil
+}
+
+type OktaGroup struct {
+	Name string `json:"name"`
+	ID   string `json:"id"`
+}
+
+func (oi *OIClient) ListGroups() ([]OktaGroup, error) {
+	var oktaGroups []OktaGroup
+
+	addToGroup := func(g []*okta.Group) {
+		for _, group := range g {
+			oktaGroups = append(oktaGroups, OktaGroup{
+				Name: group.Profile.Name,
+				ID:   group.Id,
+			})
+		}
+	}
+
+	qp := query.NewQueryParams() // default limit per docs is 10_000
+
+	respGroups, resp, err := oi.c.Group.ListGroups(context.TODO(), qp)
+	if err != nil {
+		return nil, err
+	}
+	addToGroup(respGroups)
+
+	// Pagination
+	for resp.HasNextPage() {
+		respGroups = nil
+		resp, err = resp.Next(context.TODO(), &respGroups)
+		if err != nil {
+			return nil, err
+		}
+
+		addToGroup(respGroups)
+	}
+
+	return oktaGroups, nil
+}
+
+type OktaGroupRule struct {
+	Name               string   `json:"name"`
+	ID                 string   `json:"id"`
+	DestinationGroupID string   `json:"destination_group_id"`
+	SourceGroupIDs     []string `json:"source_group_ids"`
+	// Currently we don't support Users assigned via rule, but rather manually to the group
+	// SourceUserIDs      []string `json:"user_ids"`
+}
+
+func (oi *OIClient) ListGroupRules(searchString string) ([]OktaGroupRule, error) {
+	var oktaGroupRules []OktaGroupRule
+
+	addToGroupRule := func(gr []*okta.GroupRule) error {
+		for _, groupRule := range gr {
+			ogr := OktaGroupRule{
+				Name:               groupRule.Name,
+				ID:                 groupRule.Id,
+				DestinationGroupID: groupRule.Actions.AssignUserToGroups.GroupIds[0],
+			}
+
+			if groupRule.Actions == nil || groupRule.Actions.AssignUserToGroups == nil || len(groupRule.Actions.AssignUserToGroups.GroupIds) != 1 {
+				return fmt.Errorf("group rule %s has no destination group", groupRule.Name)
+			}
+			ogr.DestinationGroupID = groupRule.Actions.AssignUserToGroups.GroupIds[0]
+
+			if groupRule.Conditions == nil || groupRule.Conditions.Expression == nil {
+				return fmt.Errorf("group rule %s has no conditions", groupRule.Name)
+			}
+			expression := groupRule.Conditions.Expression.Value
+			ogr.SourceGroupIDs = parseGroupRuleExpression(expression)
+
+			oktaGroupRules = append(oktaGroupRules, ogr)
+		}
+
+		return nil
+	}
+
+	opts := []query.ParamOptions{
+		query.WithLimit(200), // max limit per docs
+	}
+	// use search string if not empty
+	if searchString != "" {
+		opts = append(opts, query.WithSearch(searchString))
+	}
+	qp := query.NewQueryParams(opts...)
+
+	groupRules, resp, err := oi.c.Group.ListGroupRules(context.TODO(), qp)
+	if err != nil {
+		return nil, err
+	}
+
+	err = addToGroupRule(groupRules)
+	if err != nil {
+		return nil, err
+	}
+
+	// pagination
+	for resp.HasNextPage() {
+		groupRules = nil
+		resp, err = resp.Next(context.TODO(), &groupRules)
+		if err != nil {
+			return nil, err
+		}
+
+		err = addToGroupRule(groupRules)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return oktaGroupRules, nil
+}
+
+var reGroupRuleExpression = regexp.MustCompile(`"(\w{20})"`)
+
+// parseGroupRuleExpression parses the expression string from Okta API response
+// and returns a slice of group IDs. See TestParseGroupRuleExpression for example input and output.
+func parseGroupRuleExpression(expression string) []string {
+	var groupIDs []string
+
+	matches := reGroupRuleExpression.FindAllStringSubmatch(expression, -1)
+
+	for _, match := range matches {
+		if len(match) < 2 {
+			continue
+		}
+
+		if match[1] != "" {
+			groupIDs = append(groupIDs, match[1])
+		}
+	}
+
+	return groupIDs
 }

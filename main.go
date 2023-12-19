@@ -16,10 +16,19 @@ var (
 	apiToken   = os.Getenv("OKTA_INFO_API_TOKEN")
 )
 
+func printHelp() {
+	fmt.Println("Usage: okta-info <subcommand> <subcommand arguments>")
+	fmt.Println("Subcommands:")
+	fmt.Println("  group <group name> - print users in a group")
+	fmt.Println("  user <user name> - print groups for a user")
+	fmt.Println("  diff <group1,group2> <group3,group4> - print users in any of groups 1 or 2 but not in groups 3 or 4")
+	fmt.Println("  rule <group name> - print group rules for a group")
+}
+
 func run() error {
 	// Check which subcommand was provided
 	if len(os.Args) < 3 {
-		fmt.Println("Please provide a subcommand and user/group name")
+		printHelp()
 		os.Exit(1)
 	}
 
@@ -47,11 +56,13 @@ func run() error {
 		groupsA := strings.Split(os.Args[2], ",")
 		groupsB := strings.Split(os.Args[3], ",")
 
-		hideDeprovisioned := false
+		hideDeprovisioned := true
 
 		return oic.PrintGroupDiff(groupsA, groupsB, hideDeprovisioned)
+	case "rule":
+		return oic.PrintGroupRules(os.Args[2])
 	default:
-		fmt.Println("Invalid subcommand. Valid commands are: group, diff and user")
+		printHelp()
 		os.Exit(1)
 	}
 	// should not get here ever
