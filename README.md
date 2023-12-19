@@ -7,6 +7,7 @@ Query Okta API for
 1) Groups the given user is in
 2) All users in the given group
 3) Difference of 2 groups
+4) Rules related to a group
 
 ## Installation
 
