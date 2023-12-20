@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"regexp"
 	"sort"
@@ -11,6 +12,8 @@ import (
 	"github.com/okta/okta-sdk-golang/v2/okta/query"
 	"github.com/samber/lo"
 )
+
+var errUserNotFound = errors.New("user not found")
 
 type OIClient struct {
 	c *okta.Client
@@ -45,12 +48,12 @@ func NewOIClient(apiToken, oktaOrgURL string) (*OIClient, error) {
 	}, nil
 }
 
-func (oi *OIClient) PrintGroupsForUser(wantUserName string) error {
+func (oi *OIClient) GetGroupsForUser(wantUserName string) ([]string, error) {
 	filter := query.NewQueryParams(query.WithQ(wantUserName))
 	users, _, err := oi.c.User.ListUsers(oi.ctx, filter)
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	var userID string
@@ -67,14 +70,13 @@ func (oi *OIClient) PrintGroupsForUser(wantUserName string) error {
 	}
 
 	if userID == "" {
-		fmt.Println("User not found")
-		return nil
+		return nil, errUserNotFound
 	}
 
 	groups, _, err := oi.c.User.ListUserGroups(oi.ctx, userID)
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	foundGroups := make([]string, 0, len(groups))
@@ -86,6 +88,15 @@ func (oi *OIClient) PrintGroupsForUser(wantUserName string) error {
 	}
 
 	sort.Strings(foundGroups)
+
+	return foundGroups, nil
+}
+
+func (oi *OIClient) PrintGroupsForUser(wantUserName string) error {
+	foundGroups, err := oi.GetGroupsForUser(wantUserName)
+	if err != nil {
+		return err
+	}
 
 	for _, group := range foundGroups {
 		fmt.Println(group)
