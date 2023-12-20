@@ -7,8 +7,8 @@ import (
 	"sync"
 )
 
-// PrintGroupRules prints all the group rules that have the searchGroup as either source or destination
-func (oi *OIClient) PrintGroupRules(searchGroup string) error {
+// GetGroupRules returns all the group rules that have the searchGroup as either source or destination
+func (oi *OIClient) GetGroupRules(searchGroup string) ([]OktaGroupRule, error) {
 	var wg sync.WaitGroup
 
 	var groups []OktaGroup
@@ -55,6 +55,16 @@ func (oi *OIClient) PrintGroupRules(searchGroup string) error {
 		rule.SourceGroupIDs = sourceGroupIDs
 
 		rules[i] = rule
+	}
+
+	return rules, nil
+}
+
+// PrintGroupRules prints all the group rules that have the searchGroup as either source or destination
+func (oi *OIClient) PrintGroupRules(searchGroup string) error {
+	rules, err := oi.GetGroupRules(searchGroup)
+	if err != nil {
+		return err
 	}
 
 	groupRulesString := filterRulesToFormatted(searchGroup, rules)
