@@ -2,13 +2,14 @@ package client
 
 import (
 	"fmt"
+	"regexp"
 	"slices"
 	"strings"
 	"sync"
 )
 
 // PrintGroupRules prints all the group rules that have the searchGroup as either source or destination
-func (oi *OIClient) PrintGroupRules(searchGroup string) error {
+func (oi *OIClient) PrintGroupRules(searchString string, filter string) error {
 	var wg sync.WaitGroup
 
 	var groups []OktaGroup
@@ -30,7 +31,7 @@ func (oi *OIClient) PrintGroupRules(searchGroup string) error {
 	wg.Add(1)
 	go func() {
 		var err error
-		rules, err = oi.ListGroupRules(searchGroup)
+		rules, err = oi.ListGroupRules(searchString)
 		if err != nil {
 			panic(err)
 		}
@@ -46,18 +47,32 @@ func (oi *OIClient) PrintGroupRules(searchGroup string) error {
 	}
 
 	// replace groupID with groupName in rules
+	// groupName can also be in plain text - first see if there is a match with groupID
+	// if not, treat groupName as plain text
 	for i, rule := range rules {
 		rule.DestinationGroupID = groupIDMap[rule.DestinationGroupID]
 		sourceGroupIDs := make([]string, len(rule.SourceGroupIDs))
 		for i, sourceGroupID := range rule.SourceGroupIDs {
-			sourceGroupIDs[i] = groupIDMap[sourceGroupID]
+			_, exists := groupIDMap[sourceGroupID]
+			if exists {
+				sourceGroupIDs[i] = groupIDMap[sourceGroupID]
+			} else {
+				// if sourceGroupID is not found and it matches the Okta group ID pattern,
+				// the group does not exist in Okta anymore.
+				match, _ := regexp.MatchString("^00g.{17}$", sourceGroupID)
+				if match {
+					sourceGroupIDs[i] = "\033[0;31m" + sourceGroupID + " [missing in Okta!]\033[0m"
+				} else {
+					sourceGroupIDs[i] = sourceGroupID
+				}
+			}
 		}
 		rule.SourceGroupIDs = sourceGroupIDs
 
 		rules[i] = rule
 	}
 
-	groupRulesString := filterRulesToFormatted(searchGroup, rules)
+	groupRulesString := filterRulesToFormatted(searchString, rules, filter)
 	fmt.Print(groupRulesString)
 
 	return nil
@@ -65,9 +80,10 @@ func (oi *OIClient) PrintGroupRules(searchGroup string) error {
 
 // filterRulesToFormatted filters the rules to only include the ones that have searchGroup as either source or destination
 // and formats them in a string that is ready to be printed to terminal
-func filterRulesToFormatted(searchGroup string, ogr []OktaGroupRule) string {
+func filterRulesToFormatted(searchString string, ogr []OktaGroupRule, filter string) string {
 	var filteredOgr []OktaGroupRule
 
+	nameMaxLength := 0
 	sourceMaxLength := 0
 
 	// Only pick the rules that have searchGroup as either source or destination
@@ -75,38 +91,50 @@ func filterRulesToFormatted(searchGroup string, ogr []OktaGroupRule) string {
 		// is this shouldAdd stuff even needed?
 		shoulAdd := true
 
-		if strings.EqualFold(o.DestinationGroupID, searchGroup) {
-			shoulAdd = true
-		}
+		nameMaxLength = max(nameMaxLength, len(o.Name))
 
-		var wantedSourceGroupValue string
-		for _, sourceGroupID := range o.SourceGroupIDs {
-			if strings.EqualFold(sourceGroupID, searchGroup) {
-				sourceMaxLength = max(sourceMaxLength, len(sourceGroupID))
+		switch filter {
+		case "group":
+			if strings.EqualFold(o.DestinationGroupID, searchString) {
 				shoulAdd = true
-				// we need separate value to make sure Capitalization is proper
-				wantedSourceGroupValue = sourceGroupID
 			}
-		}
 
-		if !shoulAdd {
-			continue
-		}
-		// Only add the dependency to/from wantedValue, ignore other rules
-		if strings.EqualFold(o.DestinationGroupID, searchGroup) {
+			var wantedSourceGroupValue string
 			for _, sourceGroupID := range o.SourceGroupIDs {
-				sourceMaxLength = max(sourceMaxLength, len(sourceGroupID))
+				if strings.EqualFold(sourceGroupID, searchString) {
+					sourceMaxLength = max(sourceMaxLength, len(sourceGroupID))
+					shoulAdd = true
+					// we need separate value to make sure Capitalization is proper
+					wantedSourceGroupValue = sourceGroupID
+				}
 			}
-			// add all
-			filteredOgr = append(filteredOgr, o)
-		}
-		// wantedValue is one of the sourceGroups, drop the other sourceGroups
-		if strings.EqualFold(wantedSourceGroupValue, searchGroup) {
-			ogrNew := OktaGroupRule{
-				DestinationGroupID: o.DestinationGroupID,
-				SourceGroupIDs:     []string{wantedSourceGroupValue},
+
+			if !shoulAdd {
+				continue
 			}
-			filteredOgr = append(filteredOgr, ogrNew)
+			// Only add the dependency to/from wantedValue, ignore other rules
+			if strings.EqualFold(o.DestinationGroupID, searchString) {
+				for _, sourceGroupID := range o.SourceGroupIDs {
+					sourceMaxLength = max(sourceMaxLength, len(sourceGroupID))
+				}
+				// add all
+				filteredOgr = append(filteredOgr, o)
+			}
+			// wantedValue is one of the sourceGroups, drop the other sourceGroups
+			if strings.EqualFold(wantedSourceGroupValue, searchString) {
+				ogrNew := OktaGroupRule{
+					DestinationGroupID: o.DestinationGroupID,
+					SourceGroupIDs:     []string{wantedSourceGroupValue},
+				}
+				filteredOgr = append(filteredOgr, ogrNew)
+			}
+		case "name":
+			if strings.Contains(o.Name, searchString) {
+				for _, sourceGroupID := range o.SourceGroupIDs {
+					sourceMaxLength = max(sourceMaxLength, len(sourceGroupID))
+				}
+				filteredOgr = append(filteredOgr, o)
+			}
 		}
 	}
 
@@ -115,7 +143,7 @@ func filterRulesToFormatted(searchGroup string, ogr []OktaGroupRule) string {
 
 	for _, o := range filteredOgr {
 		for _, sourceGroupID := range o.SourceGroupIDs {
-			printSlice = append(printSlice, fmt.Sprintf("%-*s -> %s", sourceMaxLength, sourceGroupID, o.DestinationGroupID))
+			printSlice = append(printSlice, fmt.Sprintf("\033[1m%-*s\033[0m: %s ⟶ %s", nameMaxLength, o.Name, sourceGroupID, o.DestinationGroupID))
 		}
 	}
 

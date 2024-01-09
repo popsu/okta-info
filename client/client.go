@@ -328,7 +328,7 @@ func (oi *OIClient) ListGroupRules(searchString string) ([]OktaGroupRule, error)
 	return oktaGroupRules, nil
 }
 
-var reGroupRuleExpression = regexp.MustCompile(`"(\w{20})"`)
+var reGroupRuleExpression = regexp.MustCompile(`[^\\]"(.+?)[^\\]"`)
 
 // parseGroupRuleExpression parses the expression string from Okta API response
 // and returns a slice of group IDs. See TestParseGroupRuleExpression for example input and output.
