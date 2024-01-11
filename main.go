@@ -22,6 +22,7 @@ func printHelp() {
 	fmt.Println("  group <group name> - print users in a group")
 	fmt.Println("  user <user name> - print groups for a user")
 	fmt.Println("  diff <group1,group2> <group3,group4> - print users in any of groups 1 or 2 but not in groups 3 or 4")
+	// TODO Add tree command
 	fmt.Println("  rule <group name> - print group rules for a group")
 }
 
@@ -61,6 +62,8 @@ func run() error {
 		return oic.PrintGroupDiff(groupsA, groupsB, hideDeprovisioned)
 	case "rule":
 		return oic.PrintGroupRules(os.Args[2])
+	case "tree":
+		return oic.PrintUserTree(os.Args[2])
 	default:
 		printHelp()
 		os.Exit(1)
