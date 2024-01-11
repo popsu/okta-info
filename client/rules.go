@@ -123,6 +123,7 @@ func filterRulesToFormatted(searchString string, ogr []OktaGroupRule, filter str
 			// wantedValue is one of the sourceGroups, drop the other sourceGroups
 			if strings.EqualFold(wantedSourceGroupValue, searchString) {
 				ogrNew := OktaGroupRule{
+					Name:               o.Name,
 					DestinationGroupID: o.DestinationGroupID,
 					SourceGroupIDs:     []string{wantedSourceGroupValue},
 				}
@@ -143,7 +144,7 @@ func filterRulesToFormatted(searchString string, ogr []OktaGroupRule, filter str
 
 	for _, o := range filteredOgr {
 		for _, sourceGroupID := range o.SourceGroupIDs {
-			printSlice = append(printSlice, fmt.Sprintf("\033[1m%-*s\033[0m: %s ⟶ %s", nameMaxLength, o.Name, sourceGroupID, o.DestinationGroupID))
+			printSlice = append(printSlice, fmt.Sprintf("\033[1m%-*s\033[0m: %s -> %s", nameMaxLength, o.Name, sourceGroupID, o.DestinationGroupID))
 		}
 	}
 
