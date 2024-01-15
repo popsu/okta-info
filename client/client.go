@@ -339,13 +339,13 @@ func regexMatcher(expression *regexp.Regexp, matchString string, regexGroupMatch
 				regexMatches = append(regexMatches, match[0])
 			}
 		case true:
-				if len(match) < 2 {
-					continue
-				}
+			if len(match) < 2 {
+				continue
+			}
 
-				if match[1] != "" {
-					regexMatches = append(regexMatches, match[1])
-				}
+			if match[1] != "" {
+				regexMatches = append(regexMatches, match[1])
+			}
 		}
 	}
 	return regexMatches
