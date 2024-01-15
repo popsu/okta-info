@@ -328,24 +328,45 @@ func (oi *OIClient) ListGroupRules(searchString string) ([]OktaGroupRule, error)
 	return oktaGroupRules, nil
 }
 
-var reGroupRuleExpression = regexp.MustCompile(`."(.+?)"`)
+func regexMatcher(expression *regexp.Regexp, matchString string, regexGroupMatch bool) []string {
+	var regexMatches []string
+	matches := expression.FindAllStringSubmatch(matchString, -1)
+	for _, match := range matches {
+
+		switch regexGroupMatch {
+		case false:
+			if match[0] != "" {
+				regexMatches = append(regexMatches, match[0])
+			}
+		case true:
+				if len(match) < 2 {
+					continue
+				}
+
+				if match[1] != "" {
+					regexMatches = append(regexMatches, match[1])
+				}
+		}
+	}
+	return regexMatches
+}
 
 // parseGroupRuleExpression parses the expression string from Okta API response
 // and returns a slice of group IDs. See TestParseGroupRuleExpression for example input and output.
-func parseGroupRuleExpression(expression string) []string {
+func parseGroupRuleExpression(groupRules string) []string {
+	reDividers := regexp.MustCompile(`\|\||\&\&`)
+	reGroupPrefixes := regexp.MustCompile(`^"?isMemberOf.*Group.*`)
+	reGroupRuleExpression := regexp.MustCompile(`."(.+?)"`)
 	var groupIDs []string
 
-	matches := reGroupRuleExpression.FindAllStringSubmatch(expression, -1)
-
-	for _, match := range matches {
-		if len(match) < 2 {
-			continue
-		}
-
-		if match[1] != "" {
-			groupIDs = append(groupIDs, match[1])
+	divided := reDividers.Split(groupRules, -1)
+	for i := range divided {
+		trimmedString := strings.TrimSpace(divided[i])
+		prefixParse := regexMatcher(reGroupPrefixes, trimmedString, false)
+		for _, s := range prefixParse {
+			ruleParse := regexMatcher(reGroupRuleExpression, s, true)
+			groupIDs = append(groupIDs, ruleParse...)
 		}
 	}
-
 	return groupIDs
 }
