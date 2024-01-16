@@ -28,6 +28,29 @@ func TestParseGroupRuleExpression(t *testing.T) {
 				"00gar7xacmKf3wNAt4x7",
 			},
 		},
+		{
+			name:  "isMemberOfGroupName with OR",
+			input: `isMemberOfGroupName("20-my-team-name") || isMemberOfGroupName("20-my-other-team-name")`,
+			expected: []string{
+				"20-my-team-name",
+				"20-my-other-team-name",
+			},
+		},
+		{
+			name:  "isMemberOfGroupName with AND",
+			input: `isMemberOfGroupName("20-my-team-name") && isMemberOfGroupName("20-my-other-team-name")`,
+			expected: []string{
+				"20-my-team-name",
+				"20-my-other-team-name",
+			},
+		},
+		{
+			name:  `isMemberOfGroupNameStartsWith. Note this doesn't work properly for now because it won't give the actual groups, just the prefix`,
+			input: `isMemberOfGroupNameStartsWith("my-prefix-")`,
+			expected: []string{
+				"my-prefix-",
+			},
+		},
 	}
 
 	for _, tc := range testCases {

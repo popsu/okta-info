@@ -328,24 +328,49 @@ func (oi *OIClient) ListGroupRules(searchString string) ([]OktaGroupRule, error)
 	return oktaGroupRules, nil
 }
 
-var reGroupRuleExpression = regexp.MustCompile(`"(\w{20})"`)
+func regexMatcher(expression *regexp.Regexp, matchString string, regexGroupMatch bool) []string {
+	var regexMatches []string
+	matches := expression.FindAllStringSubmatch(matchString, -1)
+
+	for _, match := range matches {
+		switch regexGroupMatch {
+		case false:
+			if match[0] != "" {
+				regexMatches = append(regexMatches, match[0])
+			}
+		case true:
+			if len(match) < 2 {
+				continue
+			}
+
+			if match[1] != "" {
+				regexMatches = append(regexMatches, match[1])
+			}
+		}
+	}
+	return regexMatches
+}
+
+// OR and AND. The AND  doesn't work properly because the output is just a slice of strings which we infer as OR, not AND
+var reDividers = regexp.MustCompile(`\|\||&&`)
+
+// this probably doesn't work properly with `isMemberOfGroupNameStartsWith` since it won't give the actual groups, just the prefix
+var reGroupPrefixes = regexp.MustCompile(`^"?isMemberOf.*Group.*`)
+var reGroupRuleExpression = regexp.MustCompile(`."(.+?)"`)
 
 // parseGroupRuleExpression parses the expression string from Okta API response
 // and returns a slice of group IDs. See TestParseGroupRuleExpression for example input and output.
-func parseGroupRuleExpression(expression string) []string {
+func parseGroupRuleExpression(groupRules string) []string {
 	var groupIDs []string
 
-	matches := reGroupRuleExpression.FindAllStringSubmatch(expression, -1)
-
-	for _, match := range matches {
-		if len(match) < 2 {
-			continue
-		}
-
-		if match[1] != "" {
-			groupIDs = append(groupIDs, match[1])
+	divided := reDividers.Split(groupRules, -1)
+	for i := range divided {
+		trimmedString := strings.TrimSpace(divided[i])
+		prefixParse := regexMatcher(reGroupPrefixes, trimmedString, false)
+		for _, s := range prefixParse {
+			ruleParse := regexMatcher(reGroupRuleExpression, s, true)
+			groupIDs = append(groupIDs, ruleParse...)
 		}
 	}
-
 	return groupIDs
 }

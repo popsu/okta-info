@@ -46,10 +46,11 @@ OKTA_INFO_API_TOKEN=<your-api-token>
     okta-info diff <group-name-1> <group-name-2>
     ```
 
-4. Query all rules related to a group:
+4. Query rules related to a group:
 
-    Currently only works for very simple rules that use `isMemberOfAnyGroup`
+    Currently only works for few rules, so this might not work as expected
 
     ```shell
-    okta-info rules <group-name>
+    okta-info rule group <group-name> # Search using group name
+    okta-info rule name <rule name> # Search using rule name
     ```
