@@ -1,6 +1,6 @@
 module github.com/popsu/okta-info
 
-go 1.21.1
+go 1.21.6
 
 require (
 	github.com/okta/okta-sdk-golang/v2 v2.20.0
