@@ -62,7 +62,7 @@ func run() error {
 	case "rule":
 		switch os.Args[2] {
 		case "group", "name":
-			return oic.PrintGroupRules(os.Args[3], os.Args[2])
+			return oic.PrintGroupRules(os.Args[3], client.RuleType(os.Args[2]))
 		default:
 			printHelp()
 			os.Exit(1)

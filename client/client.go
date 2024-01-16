@@ -331,8 +331,8 @@ func (oi *OIClient) ListGroupRules(searchString string) ([]OktaGroupRule, error)
 func regexMatcher(expression *regexp.Regexp, matchString string, regexGroupMatch bool) []string {
 	var regexMatches []string
 	matches := expression.FindAllStringSubmatch(matchString, -1)
-	for _, match := range matches {
 
+	for _, match := range matches {
 		switch regexGroupMatch {
 		case false:
 			if match[0] != "" {
@@ -351,12 +351,16 @@ func regexMatcher(expression *regexp.Regexp, matchString string, regexGroupMatch
 	return regexMatches
 }
 
+// OR and AND. The AND  doesn't work properly because the output is just a slice of strings which we infer as OR, not AND
+var reDividers = regexp.MustCompile(`\|\||&&`)
+
+// this probably doesn't work properly with `isMemberOfGroupNameStartsWith` since it won't give the actual groups, just the prefix
+var reGroupPrefixes = regexp.MustCompile(`^"?isMemberOf.*Group.*`)
+var reGroupRuleExpression = regexp.MustCompile(`."(.+?)"`)
+
 // parseGroupRuleExpression parses the expression string from Okta API response
 // and returns a slice of group IDs. See TestParseGroupRuleExpression for example input and output.
 func parseGroupRuleExpression(groupRules string) []string {
-	reDividers := regexp.MustCompile(`\|\||\&\&`)
-	reGroupPrefixes := regexp.MustCompile(`^"?isMemberOf.*Group.*`)
-	reGroupRuleExpression := regexp.MustCompile(`."(.+?)"`)
 	var groupIDs []string
 
 	divided := reDividers.Split(groupRules, -1)
