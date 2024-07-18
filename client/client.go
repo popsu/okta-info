@@ -17,7 +17,8 @@ const deprovisionedUserStatus = "DEPROVISIONED"
 type OIClient struct {
 	c *okta.Client
 	// Not sure if this is needed, the okta.NewClient returns context also, so storing it here for now
-	ctx                    context.Context
+	ctx context.Context
+	// showDeprovisionedUsers is a flag to enable/disable printing of deprovisioned users
 	showDeprovisionedUsers bool
 }
 
