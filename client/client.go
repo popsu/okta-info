@@ -12,13 +12,17 @@ import (
 	"github.com/samber/lo"
 )
 
+const deprovisionedUserStatus = "DEPROVISIONED"
+
 type OIClient struct {
 	c *okta.Client
 	// Not sure if this is needed, the okta.NewClient returns context also, so storing it here for now
 	ctx context.Context
+	// showDeprovisionedUsers is a flag to enable/disable printing of deprovisioned users
+	showDeprovisionedUsers bool
 }
 
-func NewOIClient(apiToken, oktaOrgURL string) (*OIClient, error) {
+func NewOIClient(apiToken, oktaOrgURL string, showDeprovisionedUsers bool) (*OIClient, error) {
 	ctx, client, err := okta.NewClient(
 		context.TODO(),
 		okta.WithOrgUrl(oktaOrgURL),
@@ -40,8 +44,9 @@ func NewOIClient(apiToken, oktaOrgURL string) (*OIClient, error) {
 	}
 
 	return &OIClient{
-		c:   client,
-		ctx: ctx,
+		c:                      client,
+		ctx:                    ctx,
+		showDeprovisionedUsers: showDeprovisionedUsers,
 	}, nil
 }
 
@@ -58,11 +63,19 @@ func (oi *OIClient) PrintGroupsForUser(wantUserName string) error {
 	for _, user := range users {
 		profile := *user.Profile
 		profileEmail := profile["email"].(string)
-		// strip host out from email
-		profileUserName := strings.Split(profileEmail, "@")[0]
 
-		if strings.EqualFold(profileUserName, wantUserName) {
-			userID = user.Id
+		// searching for username with email address
+		if strings.Contains(wantUserName, "@") {
+			if strings.EqualFold(profileEmail, wantUserName) {
+				userID = user.Id
+			}
+		} else { // no email address, just name
+			// strip host out from email
+			profileUserName := strings.Split(profileEmail, "@")[0]
+
+			if strings.EqualFold(profileUserName, wantUserName) {
+				userID = user.Id
+			}
 		}
 	}
 
@@ -145,6 +158,9 @@ func (oi *OIClient) PrintUsersInGroups(wantGroupsName []string) error {
 	}
 
 	for _, user := range foundUsers {
+		if !oi.showDeprovisionedUsers && strings.Contains(user, deprovisionedUserStatus) {
+			continue
+		}
 		fmt.Println(user)
 	}
 
@@ -152,7 +168,7 @@ func (oi *OIClient) PrintUsersInGroups(wantGroupsName []string) error {
 }
 
 // PrintGroupDiff prints the difference of two sets of groups
-func (oi *OIClient) PrintGroupDiff(groupsA, groupsB []string, hideDeprovisioned bool) error {
+func (oi *OIClient) PrintGroupDiff(groupsA, groupsB []string) error {
 	groupsAUsers, err := oi.getUsersInGroupsUnion(groupsA)
 	if err != nil {
 		return err
@@ -169,13 +185,13 @@ func (oi *OIClient) PrintGroupDiff(groupsA, groupsB []string, hideDeprovisioned 
 	groupB := strings.Join(groupsB, ", ")
 
 	headerStringFmt := "Users in %s, but not in %s:\n"
-	if hideDeprovisioned {
+	if !oi.showDeprovisionedUsers {
 		headerStringFmt = "Users (excluding deprovisioned) in %s, but not in %s:\n"
 	}
 
 	fmt.Printf(headerStringFmt, groupA, groupB)
 	for _, user := range notInB {
-		if strings.Contains(user, "(DEPROVISIONED)") && hideDeprovisioned {
+		if !oi.showDeprovisionedUsers && strings.Contains(user, deprovisionedUserStatus) {
 			continue
 		}
 
@@ -185,7 +201,7 @@ func (oi *OIClient) PrintGroupDiff(groupsA, groupsB []string, hideDeprovisioned 
 
 	fmt.Printf(headerStringFmt, groupB, groupA)
 	for _, user := range notInA {
-		if strings.Contains(user, "(DEPROVISIONED)") && hideDeprovisioned {
+		if !oi.showDeprovisionedUsers && strings.Contains(user, deprovisionedUserStatus) {
 			continue
 		}
 
