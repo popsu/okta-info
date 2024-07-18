@@ -12,8 +12,9 @@ import (
 )
 
 var (
-	oktaOrgURL = os.Getenv("OKTA_INFO_ORG_URL")
-	apiToken   = os.Getenv("OKTA_INFO_API_TOKEN")
+	oktaOrgURL                = os.Getenv("OKTA_INFO_ORG_URL")
+	apiToken                  = os.Getenv("OKTA_INFO_API_TOKEN")
+	showDeprovisionedUsersEnv = "OKTA_INFO_SHOW_DEPROVISIONED_USERS"
 )
 
 func printHelp() {
@@ -23,6 +24,18 @@ func printHelp() {
 	fmt.Println("  user <user name> - print groups for a user")
 	fmt.Println("  diff <group1,group2> <group3,group4> - print users in any of groups 1 or 2 but not in groups 3 or 4")
 	fmt.Println("  rule [name/group] <rule name/group name> - print rules matching the search string or print group rules for a group")
+}
+
+// showDeprecatedUsersFromEnv returns false unless environment variable
+// has been set to show deprecated users.
+func showDeprovisionedUsersFromEnv() bool {
+	val := os.Getenv(showDeprovisionedUsersEnv)
+
+	if val == "" || strings.EqualFold(val, "false") {
+		return false
+	}
+
+	return true
 }
 
 func run() error {
@@ -37,7 +50,7 @@ func run() error {
 		return err
 	}
 
-	oic, err := client.NewOIClient(token, oktaOrgURL)
+	oic, err := client.NewOIClient(token, oktaOrgURL, showDeprovisionedUsersFromEnv())
 	if err != nil {
 		return err
 	}
@@ -56,9 +69,7 @@ func run() error {
 		groupsA := strings.Split(os.Args[2], ",")
 		groupsB := strings.Split(os.Args[3], ",")
 
-		hideDeprovisioned := false
-
-		return oic.PrintGroupDiff(groupsA, groupsB, hideDeprovisioned)
+		return oic.PrintGroupDiff(groupsA, groupsB)
 	case "rule":
 		switch os.Args[2] {
 		case "group", "name":

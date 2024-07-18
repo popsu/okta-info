@@ -54,3 +54,7 @@ OKTA_INFO_API_TOKEN=<your-api-token>
     okta-info rule group <group-name> # Search using group name
     okta-info rule name <rule name> # Search using rule name
     ```
+
+## Deprovisioned users
+
+By default deprovisioned users are not shown. To show them, set the following environment variable to truthy value: `OKTA_INFO_SHOW_DEPROVISIONED_USERS=true`
