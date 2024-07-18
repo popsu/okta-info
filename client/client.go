@@ -58,11 +58,19 @@ func (oi *OIClient) PrintGroupsForUser(wantUserName string) error {
 	for _, user := range users {
 		profile := *user.Profile
 		profileEmail := profile["email"].(string)
-		// strip host out from email
-		profileUserName := strings.Split(profileEmail, "@")[0]
 
-		if strings.EqualFold(profileUserName, wantUserName) {
-			userID = user.Id
+		// searhcing for username with email address
+		if strings.Contains(wantUserName, "@") {
+			if strings.EqualFold(profileEmail, wantUserName) {
+				userID = user.Id
+			}
+		} else {
+			// strip host out from email
+			profileUserName := strings.Split(profileEmail, "@")[0]
+
+			if strings.EqualFold(profileUserName, wantUserName) {
+				userID = user.Id
+			}
 		}
 	}
 
