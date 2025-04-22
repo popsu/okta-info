@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"runtime/debug"
 	"strings"
 
 	"github.com/popsu/okta-info/client"
@@ -24,6 +25,7 @@ func printHelp() {
 	fmt.Println("  user <user name> - print groups for a user")
 	fmt.Println("  diff <group1,group2> <group3,group4> - print users in any of groups 1 or 2 but not in groups 3 or 4")
 	fmt.Println("  rule [name/group] <rule name/group name> - print rules matching the search string or print group rules for a group")
+	fmt.Println("  version - print the version of the tool")
 }
 
 // showDeprecatedUsersFromEnv returns false unless environment variable
@@ -40,7 +42,7 @@ func showDeprovisionedUsersFromEnv() bool {
 
 func run() error {
 	// Check which subcommand was provided
-	if len(os.Args) < 3 {
+	if len(os.Args) < 2 || os.Args[1] != "version" && len(os.Args) < 3 {
 		printHelp()
 		os.Exit(1)
 	}
@@ -78,6 +80,12 @@ func run() error {
 			printHelp()
 			os.Exit(1)
 		}
+	case "version":
+		info, ok := debug.ReadBuildInfo()
+		if ok {
+			fmt.Println(info.Main.Version)
+		}
+
 	default:
 		printHelp()
 		os.Exit(1)
