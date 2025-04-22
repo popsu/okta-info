@@ -84,6 +84,8 @@ func run() error {
 		info, ok := debug.ReadBuildInfo()
 		if ok {
 			fmt.Println(info.Main.Version)
+		} else {
+			fmt.Println("Version information not available")
 		}
 
 	default:
