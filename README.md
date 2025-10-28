@@ -55,6 +55,12 @@ OKTA_INFO_API_TOKEN=<your-api-token>
     okta-info rule name <rule name> # Search using rule name
     ```
 
+5. Query user email by user ID:
+
+    ```shell
+    okta-info userid <user-id>
+    ```
+
 ## Deprovisioned users
 
 By default deprovisioned users are not shown. To show them, set the following environment variable to truthy value: `OKTA_INFO_SHOW_DEPROVISIONED_USERS=true`
