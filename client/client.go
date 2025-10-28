@@ -50,6 +50,19 @@ func NewOIClient(apiToken, oktaOrgURL string, showDeprovisionedUsers bool) (*OIC
 	}, nil
 }
 
+func (oi *OIClient) PrintUserEmailByID(userID string) error {
+	user, _, err := oi.c.User.GetUser(oi.ctx, userID)
+	if err != nil {
+		return err
+	}
+
+	profile := *user.Profile
+	email := profile["email"].(string)
+
+	fmt.Println(email)
+	return nil
+}
+
 func (oi *OIClient) PrintGroupsForUser(wantUserName string) error {
 	filter := query.NewQueryParams(query.WithQ(wantUserName))
 	users, _, err := oi.c.User.ListUsers(oi.ctx, filter)

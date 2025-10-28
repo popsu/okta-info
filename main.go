@@ -23,6 +23,7 @@ func printHelp() {
 	fmt.Println("Subcommands:")
 	fmt.Println("  group <group name> - print users in a group")
 	fmt.Println("  user <user name> - print groups for a user")
+	fmt.Println("  userid <user id> - print user email for a user ID")
 	fmt.Println("  diff <group1,group2> <group3,group4> - print users in any of groups 1 or 2 but not in groups 3 or 4")
 	fmt.Println("  rule [name/group] <rule name/group name> - print rules matching the search string or print group rules for a group")
 	fmt.Println("  version - print the version of the tool")
@@ -66,6 +67,8 @@ func run() error {
 		return oic.PrintUsersInGroups(groups)
 	case "user":
 		return oic.PrintGroupsForUser(os.Args[2])
+	case "userid":
+		return oic.PrintUserEmailByID(os.Args[2])
 	case "diff":
 		// CommaSeparated list of groups
 		groupsA := strings.Split(os.Args[2], ",")
