@@ -65,15 +65,24 @@ func (oi *OIClient) PrintUserEmailByID(userID string) error {
 
 func (oi *OIClient) PrintGroupsForUser(wantUserName string) error {
 	filter := query.NewQueryParams(query.WithQ(wantUserName))
-	users, _, err := oi.c.User.ListUsers(oi.ctx, filter)
-
+	users, resp, err := oi.c.User.ListUsers(oi.ctx, filter)
 	if err != nil {
 		return err
 	}
 
+	allUsers := users
+	for resp.HasNextPage() {
+		var nextUsers []*okta.User
+		resp, err = resp.Next(oi.ctx, &nextUsers)
+		if err != nil {
+			return err
+		}
+		allUsers = append(allUsers, nextUsers...)
+	}
+
 	var userID string
 
-	for _, user := range users {
+	for _, user := range allUsers {
 		profile := *user.Profile
 		profileEmail := profile["email"].(string)
 
@@ -97,15 +106,24 @@ func (oi *OIClient) PrintGroupsForUser(wantUserName string) error {
 		return nil
 	}
 
-	groups, _, err := oi.c.User.ListUserGroups(oi.ctx, userID)
-
+	groups, resp, err := oi.c.User.ListUserGroups(oi.ctx, userID)
 	if err != nil {
 		return err
 	}
 
-	foundGroups := make([]string, 0, len(groups))
+	allGroups := groups
+	for resp.HasNextPage() {
+		var nextGroups []*okta.Group
+		resp, err = resp.Next(oi.ctx, &nextGroups)
+		if err != nil {
+			return err
+		}
+		allGroups = append(allGroups, nextGroups...)
+	}
 
-	for _, group := range groups {
+	foundGroups := make([]string, 0, len(allGroups))
+
+	for _, group := range allGroups {
 		groupName := group.Profile.Name
 
 		foundGroups = append(foundGroups, groupName)
@@ -122,15 +140,24 @@ func (oi *OIClient) PrintGroupsForUser(wantUserName string) error {
 
 func (oi *OIClient) GetUsersInGroup(wantGroupName string) ([]string, error) {
 	filter := query.NewQueryParams(query.WithQ(wantGroupName))
-	groups, _, err := oi.c.Group.ListGroups(oi.ctx, filter)
-
+	groups, resp, err := oi.c.Group.ListGroups(oi.ctx, filter)
 	if err != nil {
 		return nil, err
 	}
 
+	allGroups := groups
+	for resp.HasNextPage() {
+		var nextGroups []*okta.Group
+		resp, err = resp.Next(oi.ctx, &nextGroups)
+		if err != nil {
+			return nil, err
+		}
+		allGroups = append(allGroups, nextGroups...)
+	}
+
 	var groupID string
 
-	for _, group := range groups {
+	for _, group := range allGroups {
 		if strings.EqualFold(group.Profile.Name, wantGroupName) {
 			groupID = group.Id
 		}
@@ -141,15 +168,24 @@ func (oi *OIClient) GetUsersInGroup(wantGroupName string) ([]string, error) {
 		return nil, nil
 	}
 
-	users, _, err := oi.c.Group.ListGroupUsers(oi.ctx, groupID, query.NewQueryParams())
-
+	users, resp, err := oi.c.Group.ListGroupUsers(oi.ctx, groupID, query.NewQueryParams())
 	if err != nil {
 		return nil, err
 	}
 
-	foundUsers := make([]string, 0, len(users))
+	allUsers := users
+	for resp.HasNextPage() {
+		var nextUsers []*okta.User
+		resp, err = resp.Next(oi.ctx, &nextUsers)
+		if err != nil {
+			return nil, err
+		}
+		allUsers = append(allUsers, nextUsers...)
+	}
 
-	for _, user := range users {
+	foundUsers := make([]string, 0, len(allUsers))
+
+	for _, user := range allUsers {
 		profile := *user.Profile
 
 		email := profile["email"].(string)
@@ -264,7 +300,7 @@ func (oi *OIClient) ListGroups() ([]OktaGroup, error) {
 
 	qp := query.NewQueryParams() // default limit per docs is 10_000
 
-	respGroups, resp, err := oi.c.Group.ListGroups(context.TODO(), qp)
+	respGroups, resp, err := oi.c.Group.ListGroups(oi.ctx, qp)
 	if err != nil {
 		return nil, err
 	}
@@ -273,7 +309,7 @@ func (oi *OIClient) ListGroups() ([]OktaGroup, error) {
 	// Pagination
 	for resp.HasNextPage() {
 		respGroups = nil
-		resp, err = resp.Next(context.TODO(), &respGroups)
+		resp, err = resp.Next(oi.ctx, &respGroups)
 		if err != nil {
 			return nil, err
 		}
@@ -330,7 +366,7 @@ func (oi *OIClient) ListGroupRules(searchString string) ([]OktaGroupRule, error)
 	}
 	qp := query.NewQueryParams(opts...)
 
-	groupRules, resp, err := oi.c.Group.ListGroupRules(context.TODO(), qp)
+	groupRules, resp, err := oi.c.Group.ListGroupRules(oi.ctx, qp)
 	if err != nil {
 		return nil, err
 	}
@@ -343,7 +379,7 @@ func (oi *OIClient) ListGroupRules(searchString string) ([]OktaGroupRule, error)
 	// pagination
 	for resp.HasNextPage() {
 		groupRules = nil
-		resp, err = resp.Next(context.TODO(), &groupRules)
+		resp, err = resp.Next(oi.ctx, &groupRules)
 		if err != nil {
 			return nil, err
 		}
